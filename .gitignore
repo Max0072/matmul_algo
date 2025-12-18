@@ -1,0 +1,6 @@
+*.o
+.idea
+.venv
+cmake-build-debug
+
+
