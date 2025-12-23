@@ -6,6 +6,7 @@
 #define UNTITLED3_ALG_STRASSEN_H
 
 #include "alg_naive.h"
+#include "alg_strassen_4x4.h"
 #include "structures.h"
 
 inline int next_pow2(int n){
@@ -31,6 +32,8 @@ inline void mat_copy(MatrixView<const T> A, MatrixView<T> B) {
 
 template <class T>
 void mat_add(MatrixView<const T> A, MatrixView<const T> B, MatrixView<T> C, OpCounter* cnt=nullptr){
+    assert(A.rows == B.rows && A.cols == B.cols);
+    assert(C.rows == A.rows && C.cols == A.cols);
     for(int i = 0; i < A.rows; ++i)
         for(int j = 0; j < A.cols; ++j)
             C(i, j) = add(A(i, j),B(i, j),cnt);
@@ -38,13 +41,16 @@ void mat_add(MatrixView<const T> A, MatrixView<const T> B, MatrixView<T> C, OpCo
 
 template <class T>
 void mat_sub(MatrixView<const T> A, MatrixView<const T> B, MatrixView<T> C, OpCounter* cnt=nullptr){
+    assert(A.rows == B.rows && A.cols == B.cols);
+    assert(C.rows == A.rows && C.cols == A.cols);
     for(int i = 0; i < A.rows; ++i)
         for(int j = 0; j < A.cols; ++j)
             C(i, j) = sub(A(i, j),B(i, j),cnt);
 }
 
 template <class T>
-void mat_add_inplace(MatrixView<T> C, MatrixView<T> A, OpCounter* cnt=nullptr){
+void mat_add_inplace(MatrixView<T> C, MatrixView<const T> A, OpCounter* cnt=nullptr){
+    assert(C.rows == A.rows and C.cols == A.cols);
     for(int i = 0; i < C.rows; ++i)
         for(int j = 0; j < C.cols; ++j)
             C(i, j)=add(C(i,j), A(i,j),cnt);
@@ -52,7 +58,7 @@ void mat_add_inplace(MatrixView<T> C, MatrixView<T> A, OpCounter* cnt=nullptr){
 
 
 template <class T>
-inline void mat_sub_inplace(MatrixView<T> C, MatrixView<T> A, OpCounter* cnt=nullptr) {
+inline void mat_sub_inplace(MatrixView<T> C, MatrixView<const T> A, OpCounter* cnt=nullptr) {
     assert(C.rows == A.rows and C.cols == A.cols);
     for (int i = 0; i < C.rows; ++i)
         for (int j = 0; j < C.cols; ++j)
@@ -72,12 +78,13 @@ void strassen_rec(MatrixView<const T> A,
     assert(B.rows == n and B.cols == n);
     assert(C.rows == n and C.cols == n);
 
-//    if (n <= THRESH) {
-//        mul_naive_view(A, B, C, cnt);
-//        return;
-//    }
-    if (n <= 1) {
-        mul_naive_view(A, B, C, cnt);
+    // Базовый случай: используем специализированный Strassen 4x4 или naive
+    if (n <= 4) {
+        if (n == 4) {
+            mul_strassen_4x4_view(A, B, C, cnt);
+        } else {
+            mul_naive_view(A, B, C, cnt);
+        }
         return;
     }
 
@@ -109,45 +116,45 @@ void strassen_rec(MatrixView<const T> A,
 // 1) P = M1 = (A11 + A22)(B11 + B22)
     mat_add(A11, A22, S1, cnt);
     mat_add(B11, B22, S2, cnt);
-    strassen_rec<T>(view((const Matrix<T>&)S1m), view((const Matrix<T>&)S2m), P, h, THRESH, cnt);
-    mat_add_inplace(C11, P, cnt);
-    mat_add_inplace(C22, P, cnt);
+    strassen_rec<T>(view(S1m), view(S2m), P, h, THRESH, cnt);
+    mat_add_inplace(C11, MatrixView<const T>(P), cnt);
+    mat_add_inplace(C22, MatrixView<const T>(P), cnt);
 
 // 2) P = M2 = (A21 + A22)B11
     mat_add(A21, A22, S1, cnt);
-    strassen_rec<T>(view((const Matrix<T>&)S1m), B11, P, h, THRESH, cnt);
-    mat_add_inplace(C21, P, cnt);
-    mat_sub_inplace(C22, P, cnt);
+    strassen_rec<T>(view(S1m), B11, P, h, THRESH, cnt);
+    mat_add_inplace(C21, MatrixView<const T>(P), cnt);
+    mat_sub_inplace(C22, MatrixView<const T>(P), cnt);
 
 // 3) P = M3 = A11(B12 - B22)
     mat_sub(B12, B22, S2, cnt);
-    strassen_rec<T>(A11, view((const Matrix<T>&)S2m), P, h, THRESH, cnt);
-    mat_add_inplace(C12, P, cnt);
-    mat_add_inplace(C22, P, cnt);
+    strassen_rec<T>(A11, view(S2m), P, h, THRESH, cnt);
+    mat_add_inplace(C12, MatrixView<const T>(P), cnt);
+    mat_add_inplace(C22, MatrixView<const T>(P), cnt);
 
 // 4) P = M4 = A22(B21 - B11)
     mat_sub(B21, B11, S2, cnt);
-    strassen_rec<T>(A22, view((const Matrix<T>&)S2m), P, h, THRESH, cnt);
-    mat_add_inplace(C11, P, cnt);
-    mat_add_inplace(C21, P, cnt);
+    strassen_rec<T>(A22, view(S2m), P, h, THRESH, cnt);
+    mat_add_inplace(C11, MatrixView<const T>(P), cnt);
+    mat_add_inplace(C21, MatrixView<const T>(P), cnt);
 
 // 5) P = M5 = (A11 + A12)B22
     mat_add(A11, A12, S1, cnt);
-    strassen_rec<T>(view((const Matrix<T>&)S1m), B22, P, h, THRESH, cnt);
-    mat_sub_inplace(C11, P, cnt);
-    mat_add_inplace(C12, P, cnt);
+    strassen_rec<T>(view(S1m), B22, P, h, THRESH, cnt);
+    mat_sub_inplace(C11, MatrixView<const T>(P), cnt);
+    mat_add_inplace(C12, MatrixView<const T>(P), cnt);
 
 // 6) P = M6 = (A21 - A11)(B11 + B12)
     mat_sub(A21, A11, S1, cnt);
     mat_add(B11, B12, S2, cnt);
-    strassen_rec<T>(view((const Matrix<T>&)S1m), view((const Matrix<T>&)S2m), P, h, THRESH, cnt);
-    mat_add_inplace(C22, P, cnt);
+    strassen_rec<T>(view(S1m), view(S2m), P, h, THRESH, cnt);
+    mat_add_inplace(C22, MatrixView<const T>(P), cnt);
 
 // 7) P = M7 = (A12 - A22)(B21 + B22)
     mat_sub(A12, A22, S1, cnt);
     mat_add(B21, B22, S2, cnt);
-    strassen_rec<T>(view((const Matrix<T>&)S1m), view((const Matrix<T>&)S2m), P, h, THRESH, cnt);
-    mat_add_inplace(C11, P, cnt);
+    strassen_rec<T>(view(S1m), view(S2m), P, h, THRESH, cnt);
+    mat_add_inplace(C11, MatrixView<const T>(P), cnt);
 
 
 }
@@ -160,36 +167,38 @@ void mul_strassen(const Matrix<T>& A,
                   int THRESH = 64,
                   OpCounter* cnt=nullptr) {
 
-    C.resize(A.rows, B.cols);
+    assert(A.cols == B.rows);
 
-    assert(A.rows == A.cols);
-    assert(B.rows == B.cols);
-    assert(A.rows == B.rows);
+    int r = A.rows;
+    int k = A.cols;
+    int c = B.cols;
 
-    int n = A.rows;
+    int n  = std::max({r, k, c});
     int n2 = next_pow2(n);
 
-    Matrix<T> Ap(n2,n2), Bp(n2,n2), Cp(n2,n2);
+    Matrix<T> Ap(n2, n2), Bp(n2, n2), Cp(n2, n2);
 
-    // Ap,Bp already zeroed if your ctor uses T{}; otherwise:
-    // mat_zero(view(Ap)); mat_zero(view(Bp)); mat_zero(view(Cp));
+    mat_zero(view(Ap));
+    mat_zero(view(Bp));
+    mat_zero(view(Cp));
 
-    // copy A,B into top-left corner
-    for (int i=0;i<n;++i)
-        for (int j=0;j<n;++j) {
-            Ap(i,j) = A(i,j);
-            Bp(i,j) = B(i,j);
-        }
+    // copy A into Ap
+    for (int i = 0; i < r; ++i)
+        for (int j = 0; j < k; ++j)
+            Ap(i, j) = A(i, j);
 
+    // copy B into Bp
+    for (int i = 0; i < k; ++i)
+        for (int j = 0; j < c; ++j)
+            Bp(i, j) = B(i, j);
 
-    // compute
-    strassen_rec<T>(view((const Matrix<T>&)Ap), view((const Matrix<T>&)Bp), view(Cp), n2, THRESH, cnt);
+    strassen_rec<T>(view(Ap), view(Bp), view(Cp), n2, THRESH, cnt);
 
-    // extract
-    C.resize(n,n);
-    for (int i=0;i<n;++i)
-        for (int j=0;j<n;++j)
-            C(i,j) = Cp(i,j);
+    // extract С
+    C.resize(r, c);
+    for (int i = 0; i < r; ++i)
+        for (int j = 0; j < c; ++j)
+            C(i, j) = Cp(i, j);
 }
 
 #endif //UNTITLED3_ALG_STRASSEN_H

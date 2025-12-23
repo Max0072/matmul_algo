@@ -31,12 +31,12 @@ struct Matrix {
     int stride() const { return cols; }
 
     T& operator()(int i, int j) {
-        assert(0 <= i && i < rows && 0 <= j && j < cols);
+        assert(0 <= i and i < rows and 0 <= j and j < cols);
         return a[i * cols + j];
     }
 
     const T& operator()(int i, int j) const {
-        assert(0 <= i && i < rows && 0 <= j && j < cols);
+        assert(0 <= i and i < rows and 0 <= j and j < cols);
         return a[i * cols + j];
     }
 
@@ -64,14 +64,14 @@ struct MatrixView {
 
     T& operator()(int i,int j) {
         assert(ptr != nullptr);
-        assert(0 <= i && i < rows);
-        assert(0 <= j && j < cols);
+        assert(0 <= i and i < rows);
+        assert(0 <= j and j < cols);
         return ptr[(size_t)i * stride + j];
     }
     const T& operator()(int i,int j) const {
         assert(ptr != nullptr);
-        assert(0 <= i && i < rows);
-        assert(0 <= j && j < cols);
+        assert(0 <= i and i < rows);
+        assert(0 <= j and j < cols);
         return ptr[(size_t)i * stride + j];
     }
 
@@ -79,7 +79,6 @@ struct MatrixView {
             typename std::enable_if<std::is_convertible<U*, T*>::value, int>::type = 0>
     MatrixView(const MatrixView<U>& other)
             : ptr(other.ptr), rows(other.rows), cols(other.cols), stride(other.stride) {}
-
 };
 
 template <class T>
@@ -95,8 +94,8 @@ MatrixView<const T> view(const Matrix<T>& M) {
 template <class T>
 auto subview(MatrixView<T> V, int r0,int c0,int r,int c) {
     assert(V.ptr != nullptr);
-    assert(r0 >= 0 && c0 >= 0);
-    assert(r >= 0 && c >= 0);
+    assert(r0 >= 0 and c0 >= 0);
+    assert(r >= 0 and c >= 0);
     assert(r0 + r <= V.rows);
     assert(c0 + c <= V.cols);
 

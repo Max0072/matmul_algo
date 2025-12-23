@@ -1,5 +1,5 @@
 //
-// Created by Max Shikunov on 18/12/2025.
+// Created on 18/12/2025.
 //
 
 #ifndef UNTITLED3_ALG_NAIVE_H
@@ -8,9 +8,9 @@
 #include "structures.h"
 
 template <class T>
-void mul_naive_view(MatrixView<const T>& A,
-                    MatrixView<const T>& B,
-                    MatrixView<T>& C,
+void mul_naive_view(MatrixView<const T> A,
+                    MatrixView<const T> B,
+                    MatrixView<T> C,
                     OpCounter* cnt = nullptr) {
 
     assert(A.cols == B.rows);
@@ -28,12 +28,12 @@ void mul_naive_view(MatrixView<const T>& A,
 }
 
 template <class T>
-void mul_naive(Matrix<T>& Am,
-               Matrix<T>& Bm,
+void mul_naive(const Matrix<T>& Am,
+               const Matrix<T>& Bm,
                Matrix<T>& Cm,
                OpCounter* cnt = nullptr) {
 
-    Cm.resize(Am.rows, Bm.cols);;
+    Cm.resize(Am.rows, Bm.cols);
     auto A = view(Am);
     auto B = view(Bm);
     auto C = view(Cm);
